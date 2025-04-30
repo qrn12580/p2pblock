@@ -1,0 +1,14 @@
+server:
+  port: 8091
+
+block:
+  ##设定哈希值前difficulty位都是0时,满足计算结果
+  difficulty: 4
+  ##当前节点p2pserver端口号
+  p2pport: 7002
+  ##要连接的节点地址
+  address: ws://172.20.10.4:7001
+
+  ##ca:
+  ##url: http://127.0.0.1:9065
+  ##userDN: CN=User, OU=User, O=00r, L=User, ST=User, C=User
