@@ -117,8 +117,7 @@ public abstract class Coder {
     }
 
 
-
-    /**
+      /**
      * 使用AES算法加密明文
      *
      * @param plainText 明文字符串

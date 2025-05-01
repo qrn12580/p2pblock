@@ -4,7 +4,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import com.bjut.blockchain.web.util.Coder;
+import com.bjut.blockchain.web.Aspect.BroadcastAspect;
+import com.bjut.blockchain.web.Aspect.HandleMessageAspect;
 import com.bjut.blockchain.web.util.KeyAgreementUtil;
 import org.java_websocket.WebSocket;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,9 @@ public class P2PService implements ApplicationRunner {
 	@Autowired
 	P2PClient p2PClient;
 
+	@Autowired
+	NodeJoinAndQuit nodeJoinAndQuit;
+
 	/**
 	 * 客户端和服务端共用的消息处理方法
 	 * @param webSocket
@@ -48,11 +52,11 @@ public class P2PService implements ApplicationRunner {
 	 * @param sockets
 	 */
 	public void handleMessage(WebSocket webSocket, String msg, List<WebSocket> sockets) {
+		msg= HandleMessageAspect.processMessage(msg);
 		if(msg==null) {
-            return;
-        }
+                   return;
+                }
 		try {
-			System.out.println(msg);
 			Message message = JSON.parseObject(msg, Message.class);
 			System.out.println("接收到IP地址为：" +webSocket.getRemoteSocketAddress().getAddress().toString()
 					+"，端口号为："+ webSocket.getRemoteSocketAddress().getPort() + "的p2p消息："
@@ -74,6 +78,26 @@ public class P2PService implements ApplicationRunner {
 			case BlockConstant.RESPONSE_BLOCKCHAIN:
 				handleBlockChainResponse(message.getData(), sockets);
 				break;
+			//密钥交换:5
+			case BlockConstant.KEY_AGREEMENT:
+			    //todo 密钥交换
+				System.out.println("节点密钥交换"+message.getData());
+				KeyAgreementUtil.agreementKey(message.getData());
+				break;
+			//节点退出：6
+			case BlockConstant.NODE_QUIT:
+				nodeJoinAndQuit.agreement();
+				break;
+			//派发密钥：7
+			case BlockConstant.DISTRIBUTE_KEY:
+			    //todo 分布式密钥
+				System.out.println("节点接收密钥"+message.getData());
+				if(KeyAgreementUtil.keyAgreementValue==null){
+					System.out.println("miaogengxin");
+					KeyAgreementUtil.keyAgreementValue=message.getData();
+				}
+				break;
+
 			}
 		} catch (Exception e) {
 			System.out.println("处理IP地址为：" +webSocket.getRemoteSocketAddress().getAddress().toString()
@@ -157,10 +181,9 @@ public class P2PService implements ApplicationRunner {
 	/**
 	 * 全网广播消息
 	 * @param message
-	 * 加密和证书拼接位于com.bjut.blockchain.web.Aspect.BroadcastAspect
 	 */
 	public void broatcast(String message) {
-        List<WebSocket> socketsList = this.getSockets();
+		List<WebSocket> socketsList = this.getSockets();
 		if (CollectionUtils.isEmpty(socketsList)) {
 			return;
 		}
@@ -170,30 +193,14 @@ public class P2PService implements ApplicationRunner {
 		}
 		System.out.println("======全网广播消息结束");
 	}
-
-
-
+	
 	/**
 	 * 向其它节点发送消息
 	 * @param ws
 	 * @param message
 	 */
 	public void write(WebSocket ws, String message) {
-
-		try {
-			// 获取证书字符串
-			System.out.println("message  "+message);
-			String certificateStr = CAImpl.getCertificateStr();
-			// 拼接消息和证书
-			message = message + "*&*" + certificateStr;
-			// 使用AES加密消息
-			message = Coder.encryptAES(message, KeyAgreementUtil.keyAgreementValue);
-			// 修改方法参数
-		} catch (Exception e) {
-			throw new RuntimeException("Error processing message", e);
-		}
-
-
+		message= BroadcastAspect.processMessage(message);
 		System.out.println("发送给IP地址为：" +ws.getRemoteSocketAddress().getAddress().toString() 
 			+ "，端口号为："+ws.getRemoteSocketAddress().getPort() + " 的p2p消息:" + message);
 		ws.send(message);
@@ -244,12 +251,20 @@ public class P2PService implements ApplicationRunner {
 
 	@Override
 	public void run(ApplicationArguments args) throws Exception {
+		// 启动 P2P 服务器
 		p2PServer.initP2PServer(blockCache.getP2pport());
-		p2PClient.connectToPeer(blockCache.getAddress());
+
+		// 连接到配置的初始对等节点
+		List<String> initialPeers = blockCache.getInitialPeers(); // 获取地址列表
+		if (initialPeers != null) {
+			for (String peerAddress : initialPeers) { // 遍历列表
+				p2PClient.connectToPeer(peerAddress); // 尝试连接每个节点
+			}
+		}
+
 		System.out.println("*****难度系数******"+blockCache.getDifficulty());
 		System.out.println("*****端口号******"+blockCache.getP2pport());
-		System.out.println("*****节点地址******"+blockCache.getAddress());
-		
+		System.out.println("*****节点地址列表******"+blockCache.getInitialPeers()); // 输出地址列表
 	}
 	
 }
