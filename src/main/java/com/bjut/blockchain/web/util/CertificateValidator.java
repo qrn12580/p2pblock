@@ -1,5 +1,7 @@
 package com.bjut.blockchain.web.util;
 
+import com.bjut.blockchain.web.service.CAImpl;
+
 import java.io.ByteArrayInputStream;
 import java.security.*;
 import java.security.cert.*;
@@ -48,6 +50,14 @@ public class CertificateValidator {
         try {
             return validateCertificate(stringToCertificate(certificate), stringToCertificate(rootCertificate));
         } catch (CertificateException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static boolean validateCertificateByString(String certificate) {
+        try {
+            return validateCertificateByString(certificate, CAImpl.getRootCertificateStr());
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }

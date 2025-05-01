@@ -3,6 +3,9 @@ package com.bjut.blockchain.web.service;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+import com.bjut.blockchain.web.util.Coder;
+import com.bjut.blockchain.web.util.KeyAgreementUtil;
 import org.java_websocket.WebSocket;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.ApplicationArguments;
@@ -45,7 +48,11 @@ public class P2PService implements ApplicationRunner {
 	 * @param sockets
 	 */
 	public void handleMessage(WebSocket webSocket, String msg, List<WebSocket> sockets) {
+		if(msg==null) {
+            return;
+        }
 		try {
+			System.out.println(msg);
 			Message message = JSON.parseObject(msg, Message.class);
 			System.out.println("接收到IP地址为：" +webSocket.getRemoteSocketAddress().getAddress().toString()
 					+"，端口号为："+ webSocket.getRemoteSocketAddress().getPort() + "的p2p消息："
@@ -150,9 +157,10 @@ public class P2PService implements ApplicationRunner {
 	/**
 	 * 全网广播消息
 	 * @param message
+	 * 加密和证书拼接位于com.bjut.blockchain.web.Aspect.BroadcastAspect
 	 */
 	public void broatcast(String message) {
-		List<WebSocket> socketsList = this.getSockets();
+        List<WebSocket> socketsList = this.getSockets();
 		if (CollectionUtils.isEmpty(socketsList)) {
 			return;
 		}
@@ -162,13 +170,30 @@ public class P2PService implements ApplicationRunner {
 		}
 		System.out.println("======全网广播消息结束");
 	}
-	
+
+
+
 	/**
 	 * 向其它节点发送消息
 	 * @param ws
 	 * @param message
 	 */
 	public void write(WebSocket ws, String message) {
+
+		try {
+			// 获取证书字符串
+			System.out.println("message  "+message);
+			String certificateStr = CAImpl.getCertificateStr();
+			// 拼接消息和证书
+			message = message + "*&*" + certificateStr;
+			// 使用AES加密消息
+			message = Coder.encryptAES(message, KeyAgreementUtil.keyAgreementValue);
+			// 修改方法参数
+		} catch (Exception e) {
+			throw new RuntimeException("Error processing message", e);
+		}
+
+
 		System.out.println("发送给IP地址为：" +ws.getRemoteSocketAddress().getAddress().toString() 
 			+ "，端口号为："+ws.getRemoteSocketAddress().getPort() + " 的p2p消息:" + message);
 		ws.send(message);
