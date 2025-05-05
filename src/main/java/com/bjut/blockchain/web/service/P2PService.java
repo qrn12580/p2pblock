@@ -45,6 +45,9 @@ public class P2PService implements ApplicationRunner {
 	@Autowired
 	NodeJoinAndQuit nodeJoinAndQuit;
 
+	@Autowired
+	KeyAgreementUtil keyAgreementUtil;
+
 	/**
 	 * 客户端和服务端共用的消息处理方法
 	 * @param webSocket
@@ -82,10 +85,11 @@ public class P2PService implements ApplicationRunner {
 			case BlockConstant.KEY_AGREEMENT:
 			    //todo 密钥交换
 				System.out.println("节点密钥交换"+message.getData());
-				KeyAgreementUtil.agreementKey(message.getData());
+				keyAgreementUtil.agreementKey(message.getData());
 				break;
 			//节点退出：6
 			case BlockConstant.NODE_QUIT:
+				System.out.println("节点退出 重新协商密钥");
 				nodeJoinAndQuit.agreement();
 				break;
 			//派发密钥：7
@@ -93,7 +97,6 @@ public class P2PService implements ApplicationRunner {
 			    //todo 分布式密钥
 				System.out.println("节点接收密钥"+message.getData());
 				if(KeyAgreementUtil.keyAgreementValue==null){
-					System.out.println("miaogengxin");
 					KeyAgreementUtil.keyAgreementValue=message.getData();
 				}
 				break;

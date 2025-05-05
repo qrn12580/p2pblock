@@ -2,7 +2,10 @@ package com.bjut.blockchain.web.util;
 
 import com.bjut.blockchain.web.service.CAImpl;
 import com.bjut.blockchain.web.service.NodeJoinAndQuit;
+import com.bjut.blockchain.websocket.P2PServer;
 import lombok.Getter;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import javax.crypto.KeyAgreement;
 import java.security.MessageDigest;
@@ -10,23 +13,31 @@ import java.util.Arrays;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.CopyOnWriteArrayList;
-
+@Component
 public class KeyAgreementUtil {
 
     @Getter
     public static String keyAgreementValue = null;
+
+    @Autowired
+    NodeJoinAndQuit nodeJoinAndQuit;
+
+    @Autowired
+    P2PServer p2pServer;
 
     private static CopyOnWriteArrayList<String> keyArray = new CopyOnWriteArrayList<>();
     private static Timer timer = new Timer(true);
     private static long startTime = -1; // 初始值为-1，表示未开始计时
     private static boolean isTimerSet = false; // 标记是否已经设置了定时任务
 
+    //XXX: 密钥协商过程有待商榷
     private static void keyAgreement(String[] strings) {
         try {
             strings = Arrays.stream(strings).distinct().toArray(String[]::new);
             Arrays.sort(strings);
             StringBuilder sb = new StringBuilder();
             for (String str : strings) {
+                System.out.println("key:"+str);
                 sb.append(str);
             }
             String concatenatedString = sb.toString();
@@ -48,19 +59,19 @@ public class KeyAgreementUtil {
         }
     }
 
-    public static void agreementKey(String key) {
+    public void agreementKey(String key) {
         if (keyAgreementValue == null) {
             agreementKeyArray(key);
         } else {
-            NodeJoinAndQuit nodeJoinAndQuit = new NodeJoinAndQuit();
-            nodeJoinAndQuit.agreement();
+            //nodeJoinAndQuit.agreement();
         }
     }
 
-    private static synchronized void agreementKeyArray(String key) {
+    private synchronized void agreementKeyArray(String key) {
         // 如果keyArray为空，开始计时
         if (keyArray.isEmpty()) {
             System.out.println("开始计时");
+            p2pServer.sendPublicKey();
             startTime = System.currentTimeMillis();
         }
 
@@ -75,7 +86,7 @@ public class KeyAgreementUtil {
                 public void run() {
                     //synchronized (KeyAgreementUtil.class) {
                         // 检查是否超时
-                        if (System.currentTimeMillis() - startTime >= 4000) {
+                        if (System.currentTimeMillis() - startTime >= 7500) {
                             System.out.println("开始密钥协商");
                             keyArray.add(CryptoUtil.byte2Hex(CAImpl.getKeyPair().getPublic().getEncoded()));
                             keyAgreement(keyArray.toArray(new String[0]));
@@ -88,24 +99,8 @@ public class KeyAgreementUtil {
                         }
                     //}
                 }
-            }, 4000);
+            }, 7500);
         }
     }
 
-    public static void main(String[] args) {
-        agreementKey("key1");
-        agreementKey("key2");
-        try {
-            Thread.sleep(2000); // 等待2秒
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        agreementKey("key3");
-        try {
-            Thread.sleep(10000); // 再等待2秒
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        agreementKey("key4");
-    }
 }

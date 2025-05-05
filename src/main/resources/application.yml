@@ -1,14 +1,13 @@
 server:
-  port: 8091
-
+  port: 8091 # 节点自身的HTTP服务端口
+spring:
+  aop:
+    proxy-target-class: true
 block:
-  ##设定哈希值前difficulty位都是0时,满足计算结果
   difficulty: 4
-  ##当前节点p2pserver端口号
-  p2pport: 7002
-  ##要连接的节点地址
-  address: ws://172.20.10.4:7001
-
-  ##ca:
-  ##url: http://127.0.0.1:9065
-  ##userDN: CN=User, OU=User, O=00r, L=User, ST=User, C=User
+  p2pport: 7001 # 节点自身的P2P服务端口
+  ## 要连接的初始节点地址列表
+  initialPeers:
+    - ws://127.0.0.1:7002
+    - ws://127.0.0.1:7003
+    ## - ws://192.168.0.101:7004
